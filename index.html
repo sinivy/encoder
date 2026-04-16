@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Encoder</title>
+
+<style>
+body {
+  margin: 0;
+  background: black;
+  color: #00ff88;
+  font-family: "Courier New", monospace;
+  text-align: center;
+}
+
+canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+}
+
+#boot {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background: black;
+  color: #00ff88;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+#conteudo {
+  display: none;
+  padding: 40px;
+}
+
+.glitch {
+  font-size: 2em;
+  animation: glitch 1s infinite;
+}
+
+@keyframes glitch {
+  0% { text-shadow: 2px 0 red, -2px 0 blue; }
+  50% { text-shadow: -2px 0 red, 2px 0 blue; }
+  100% { text-shadow: 2px 2px red, -2px -2px blue; }
+}
+
+textarea {
+  width: 80%;
+  height: 100px;
+  margin: 10px;
+  background: black;
+  color: #00ff88;
+  border: 1px solid #00ff88;
+  padding: 10px;
+}
+
+button {
+  background: black;
+  color: #00ff88;
+  border: 1px solid #00ff88;
+  padding: 10px 20px;
+  margin: 10px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #00ff88;
+  color: black;
+  box-shadow: 0 0 10px #00ff88;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="matrix"></canvas>
+
+<div id="boot"></div>
+
+<div id="conteudo">
+  <h1 class="glitch">ENCODER</h1>
+
+  <textarea id="entrada" placeholder="Digite sua mensagem..."></textarea><br>
+
+  <button onclick="codificar()">Codificar</button>
+  <button onclick="decodificar()">Decodificar</button>
+  <button onclick="modoCaos()">Modo Caos</button>
+  <button onclick="copiar()">Copiar</button>
+
+  <textarea id="saida" placeholder="Resultado..."></textarea>
+</div>
+
+<script>
+
+const bootText = [
+  "Inicializando sistema...",
+  "Conectando...",
+  "Acessando dados...",
+  "Permissão concedida ✔",
+  "Bem-vindo."
+];
+
+let b = 0, c = 0;
+
+function bootAnim() {
+  let el = document.getElementById("boot");
+
+  if (b < bootText.length) {
+    if (c < bootText[b].length) {
+      el.innerHTML += bootText[b][c];
+      c++;
+      setTimeout(bootAnim, 25);
+    } else {
+      el.innerHTML += "<br>";
+      b++; c = 0;
+      setTimeout(bootAnim, 300);
+    }
+  } else {
+    setTimeout(() => {
+      el.style.display = "none";
+      document.getElementById("conteudo").style.display = "block";
+    }, 800);
+  }
+}
+bootAnim();
+
+let canvas = document.getElementById("matrix");
+let ctx = canvas.getContext("2d");
+
+let fontSize = 16;
+let columns, drops;
+
+let mouse = { x: null, y: null };
+
+window.addEventListener("mousemove", (e) => {
+  mouse.x = e.x;
+  mouse.y = e.y;
+});
+
+function initMatrix() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  columns = Math.floor(canvas.width / fontSize);
+  drops = Array(columns).fill(1);
+}
+
+function draw() {
+  ctx.fillStyle = "rgba(0,0,0,0.05)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.font = fontSize + "px monospace";
+
+  for (let i = 0; i < drops.length; i++) {
+    let x = i * fontSize;
+    let y = drops[i] * fontSize;
+
+    let dist = Math.hypot(mouse.x - x, mouse.y - y);
+
+    let text = "01アイウエオABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 30)];
+
+    if (dist < 100) {
+      ctx.fillStyle = "#ffffff";
+      y -= 20;
+    } else {
+      ctx.fillStyle = "#00ff88";
+    }
+
+    ctx.fillText(text, x, y);
+
+    if (y > canvas.height && Math.random() > 0.975) {
+      drops[i] = 0;
+    }
+
+    drops[i]++;
+  }
+}
+
+initMatrix();
+setInterval(draw, 33);
+window.addEventListener("resize", initMatrix);
+
+function efeitoDigitando(texto, id) {
+  let i = 0;
+  let el = document.getElementById(id);
+  el.value = "";
+
+  let interval = setInterval(() => {
+    el.value += texto[i];
+    i++;
+    if (i >= texto.length) clearInterval(interval);
+  }, 15);
+}
+
+function codificar() {
+  let texto = document.getElementById("entrada").value;
+  let bytes = new TextEncoder().encode(texto);
+  efeitoDigitando(Array.from(bytes).join(" "), "saida");
+}
+
+function decodificar() {
+  try {
+    let codigo = document.getElementById("entrada").value;
+    let bytes = codigo.split(" ").map(Number);
+    let texto = new TextDecoder().decode(new Uint8Array(bytes));
+    efeitoDigitando(texto, "saida");
+  } catch {
+    document.getElementById("saida").value = "Erro ☠️";
+  }
+}
+
+function modoCaos() {
+  let texto = document.getElementById("entrada").value;
+  let bytes = new TextEncoder().encode(texto);
+
+  let emojis = ["😂","👀","☠️","🗝️","🥱","🤖","🌚"];
+  let caos = [];
+
+  bytes.forEach(b => {
+    let r = Math.random();
+    if (r < 0.4) caos.push(b);
+    else if (r < 0.7) caos.push(String.fromCharCode(b));
+    else caos.push(emojis[Math.floor(Math.random()*emojis.length)]);
+  });
+
+  efeitoDigitando(caos.join(" "), "saida");
+}
+
+function copiar() {
+  let texto = document.getElementById("saida").value;
+  if (!texto) return;
+
+  navigator.clipboard.writeText(texto);
+
+  let msg = document.createElement("div");
+  msg.innerText = "✔ Copiado";
+  msg.style.position = "fixed";
+  msg.style.bottom = "20px";
+  msg.style.right = "20px";
+  msg.style.color = "#00ff88";
+
+  document.body.appendChild(msg);
+  setTimeout(() => msg.remove(), 1500);
+}
+
+</script>
+
+</body>
+</html>
